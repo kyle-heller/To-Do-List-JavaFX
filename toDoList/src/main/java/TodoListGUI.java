@@ -2,11 +2,7 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.geometry.Pos;
@@ -17,7 +13,6 @@ import java.util.Optional;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import javafx.scene.paint.Color;
-import javafx.scene.control.ListCell;
 import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 
@@ -33,9 +28,44 @@ public class TodoListGUI extends Application {
         taskListObservable = FXCollections.observableArrayList(todoList.getTasks());
         taskListView = new ListView<>(taskListObservable); // Initialization moved here
 
-        primaryStage.setTitle("To-Do List");
+        Label titleLabel = new Label(" To-Do List");
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 20px;");
 
-        // Custom cell factory for ListView
+        Button addTaskButton = new Button("+");
+        addTaskButton.setOnAction(event -> showAddTaskDialog());
+
+        Button undoButton = new Button("Undo");
+        undoButton.setOnAction(event -> {
+            // Placeholder for undo logic
+            System.out.println("Undo action triggered");
+        });
+
+        ComboBox<String> sortOptions = new ComboBox<>();
+        sortOptions.getItems().addAll("Sort by Due Date", "Sort by Latest Added");
+        sortOptions.setValue("Sort by Latest Added"); // Default sorting option
+
+        sortOptions.getSelectionModel().selectedItemProperty().addListener((options, oldValue, newValue) -> {
+            switch (newValue) {
+                case "Sort by Due Date":
+                    sortByDueDate();
+                    break;
+                case "Sort by Latest Added":
+                    sortByLatestAdded();
+                    break;
+            }
+        });
+
+        HBox rightControls = new HBox(5, sortOptions, undoButton, addTaskButton);
+        rightControls.setAlignment(Pos.CENTER_RIGHT);
+
+        BorderPane topLayout = new BorderPane();
+        topLayout.setLeft(titleLabel);
+        topLayout.setRight(rightControls);
+
+        BorderPane mainLayout = new BorderPane();
+        mainLayout.setTop(topLayout);
+        mainLayout.setCenter(taskListView);
+
         taskListView.setCellFactory(lv -> new ListCell<>() {
             private final CheckBox checkBox = new CheckBox();
 
@@ -58,32 +88,31 @@ public class TodoListGUI extends Application {
             }
         });
 
-        Button addTaskButton = new Button("+");
-        addTaskButton.setOnAction(event -> showAddTaskDialog());
-
-        HBox topPane = new HBox(addTaskButton);
-        topPane.setAlignment(Pos.TOP_RIGHT);
-
-        BorderPane mainLayout = new BorderPane();
-        mainLayout.setTop(topPane);
-        mainLayout.setCenter(taskListView);
-
         Scene scene = new Scene(mainLayout, 400, 600);
         primaryStage.setScene(scene);
+        primaryStage.setTitle("To-Do List");
         primaryStage.show();
     }
 
-    private Comparator<Task> taskComparator = (task1, task2) -> {
-        boolean completed1 = task1.isTaskCompleted();
-        boolean completed2 = task2.isTaskCompleted();
-        if (completed1 == completed2) return 0;
-        return completed1 ? 1 : -1;
-    };
+    private void sortByDueDate() {
+        FXCollections.sort(taskListObservable, Comparator.comparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())));
+        updateListView();
+    }
+
+    private void updateListView() {
+        taskListView.setItems(null); // Force the ListView to update
+        taskListView.setItems(taskListObservable); // Re-set the sorted items
+    }
+
+    private void sortByLatestAdded() {
+        FXCollections.sort(taskListObservable, Comparator.comparingInt(Task::getTaskID));
+        updateListView();
+    }
 
     private void updateAndSortTaskList() {
         PauseTransition pause = new PauseTransition(Duration.seconds(0.5)); // 0.5 seconds delay
         pause.setOnFinished(event -> {
-            FXCollections.sort(taskListObservable, taskComparator); // Sort the list
+            FXCollections.sort(taskListObservable, Comparator.comparing(Task::isTaskCompleted).thenComparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())));
             taskListView.setItems(null); // Force the ListView to update
             taskListView.setItems(taskListObservable); // Re-set the sorted items
         });

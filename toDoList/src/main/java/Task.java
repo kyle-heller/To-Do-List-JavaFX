@@ -62,6 +62,18 @@ public class Task {
         return this.taskCompleted;
     }
 
+    public LocalDate getDueDate() {
+        return this.dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public int getTaskID() {
+        return this.taskID;
+    }
+
     // Utility Methods
     @Override
     public String toString() {
