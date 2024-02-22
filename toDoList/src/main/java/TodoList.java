@@ -3,13 +3,14 @@ import java.util.ArrayList;
 public class TodoList {
     private ArrayList<Task> taskList;
 
+    // Constructor
     public TodoList() {
         taskList = new ArrayList<>();
     }
 
-    public void addTask(String taskName) {
-        Task task = new Task(taskName);
-        taskList.add(task);
+    // Action Methods
+    public void addTask(Task newTask) {
+        taskList.add(newTask);
     }
 
     public void removeTask(String taskName) {
@@ -24,10 +25,12 @@ public class TodoList {
         });
     }
 
+    // Getter Methods
     public ArrayList<Task> getTasks() {
         return taskList;
     }
 
+    // Utility Methods
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder();
@@ -37,6 +40,7 @@ public class TodoList {
         return result.toString();
     }
 
+    // Main
     public static void main(String[] args) {
         TodoListGUI.main(null);
     }

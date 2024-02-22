@@ -1,57 +1,75 @@
 import java.time.LocalDate;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import java.util.Comparator;
+
 
 public class Task {
+    // Static Fields
     static int taskCount;
-    int taskID;
-    String taskName;
-    boolean importantHighlight;
 
+    // Instance Fields
+    private int taskID;
+    private String taskName;
+    private boolean importantHighlight;
+    private LocalDate dueDate;
     private BooleanProperty taskCompleted = new SimpleBooleanProperty(false);
 
-    public BooleanProperty taskCompletedProperty() {
-        return taskCompleted;
+    // Constructors
+    public Task(String taskName) {
+        this(taskName, null, false);
+    }
+
+    public Task(String taskName, LocalDate dueDate) {
+        this(taskName, dueDate, false);
+    }
+
+    public Task(String taskName, LocalDate dueDate, boolean importantHighlight) {
+        this.taskName = taskName;
+        this.dueDate = dueDate;
+        this.importantHighlight = importantHighlight;
+        this.taskID = assignTaskID();
+    }
+
+    // Static Methods
+    private static int assignTaskID() {
+        taskCount++;
+        return taskCount;
+    }
+
+    // Property Accessors and Mutators
+    public String getTaskName() {
+        return this.taskName;
+    }
+
+    public void setTaskName(String newName) {
+        this.taskName = newName;
     }
 
     public boolean isTaskCompleted() {
-        return taskCompleted.get();
+        return this.taskCompleted.get();
     }
 
     public void setTaskCompleted(boolean value) {
         this.taskCompleted.set(value);
     }
 
-    LocalDate dueDate;
-//    example: LocalDate dueDate = LocalDate.of(2024, 1, 31); // YYYY-MM-DD
-
-    public Task(String taskName) {
-        this(taskName, null);
-    }
-    public Task(String taskName, LocalDate dueDate) {
-        this(taskName, dueDate, false);
-    }
-    public Task(String taskName, LocalDate dueDate, boolean importantHighlight) {
-        this.taskName = taskName;
-        this.dueDate = dueDate;
-        this.importantHighlight = importantHighlight;
-        taskID = assignTaskID();
+    public String getDueDateString() {
+        return (dueDate != null) ? dueDate.toString() : "No due date";
     }
 
-    private static int assignTaskID() {
-        taskCount++;
-        return taskCount;
+    public BooleanProperty taskCompletedProperty() {
+        return this.taskCompleted;
     }
 
-    public String getTaskName() { return this.taskName; }
-
-
-
-    public void setTaskName(String newName) { this.taskName = newName; }
-
-
-    public String toString()
-    {
-        return taskID + " " + taskName + " " + taskCompleted;
+    // Utility Methods
+    @Override
+    public String toString() {
+        String completedText = isTaskCompleted() ? "Completed" : "Not Completed";
+        String dueDateText = getDueDateString();
+        return String.format("Task ID: %d, Name: %s, Status: %s, Due Date: %s", taskID, taskName, completedText, dueDateText);
     }
+
+    //To Organize
+
 }
