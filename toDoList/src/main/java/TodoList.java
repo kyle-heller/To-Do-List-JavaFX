@@ -18,6 +18,7 @@ public class TodoList extends Application {
 
     }
 
+    //TODO add serialization to save tasks
 //    public TodoList(SerlializedData) {
 //
 //    }
@@ -29,30 +30,39 @@ public class TodoList extends Application {
         // Create the ListView for tasks
         ListView<Task> taskListView = new ListView<>(taskList);
         taskListView.setCellFactory(lv -> new CheckBoxListCell<>(
-                task -> task.taskCompletedProperty(), // Corrected to use the taskCompleted property
+                task -> task.taskCompletedProperty(), // corrected to match the Task class
                 new StringConverter<Task>() {
                     @Override
                     public String toString(Task task) {
-                        return task.getTaskName(); // modify this as needed
+                        return task.getTaskName() + (task.isTaskCompleted() ? " (completed)" : ""); // Shows completion status
                     }
 
                     @Override
                     public Task fromString(String string) {
-                        return null; // no conversion from string needed
+                        // No need for this method in this context
+                        return null;
                     }
                 }
         ));
 
-        // Main layout container
+        // Add sample tasks
+        addTask("Sample Task 1");
+        addTask("Sample Task 2");
+
+        // Create the add task button (but without functionality for now)
+        Button addTaskButton = new Button("+");
+
+        // Set the main layout's children
         BorderPane mainLayout = new BorderPane();
-        // mainLayout.setTop(addTaskButton); // You need to create and set this button
+        mainLayout.setTop(addTaskButton);
         mainLayout.setCenter(taskListView);
 
         // Create the scene and show the stage
         Scene scene = new Scene(mainLayout, 400, 600); // Set the window size
         primaryStage.setScene(scene);
-        primaryStage.show(); // Show the stage
+        primaryStage.show();
     }
+
 
 
     public void addTask(String taskName) {
