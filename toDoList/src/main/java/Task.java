@@ -1,9 +1,27 @@
 import java.time.LocalDate;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+
 public class Task {
     static int taskCount;
     int taskID;
     String taskName;
-    boolean taskCompleted, importantHighlight;
+    boolean importantHighlight;
+
+    private BooleanProperty taskCompleted = new SimpleBooleanProperty(false);
+
+    public BooleanProperty taskCompletedProperty() {
+        return taskCompleted;
+    }
+
+    public boolean isTaskCompleted() {
+        return taskCompleted.get();
+    }
+
+    public void setTaskCompleted(boolean value) {
+        this.taskCompleted.set(value);
+    }
+
     LocalDate dueDate;
 //    example: LocalDate dueDate = LocalDate.of(2024, 1, 31); // YYYY-MM-DD
 
@@ -17,7 +35,6 @@ public class Task {
         this.taskName = taskName;
         this.dueDate = dueDate;
         this.importantHighlight = importantHighlight;
-        this.taskCompleted = false;
         taskID = assignTaskID();
     }
 
@@ -28,10 +45,9 @@ public class Task {
 
     public String getTaskName() { return this.taskName; }
 
-    public void setTaskName(String newName) { this.taskName = newName; }
-    public void setTaskCompleted() { this.setTaskCompleted(true); }
-    public void setTaskCompleted(boolean value) { this.taskCompleted = value; }
 
+
+    public void setTaskName(String newName) { this.taskName = newName; }
 
 
     public String toString()
