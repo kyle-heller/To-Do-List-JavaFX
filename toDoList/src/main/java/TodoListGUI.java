@@ -8,7 +8,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.geometry.Pos;
 import javafx.stage.Stage;
-import javafx.util.StringConverter;
 import java.util.Comparator;
 import java.util.Optional;
 import java.time.LocalDate;
@@ -17,11 +16,15 @@ import javafx.scene.paint.Color;
 import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 
+/**
+ * The main GUI application class for managing a todo list. It allows users to add, remove, mark tasks as completed,
+ * highlight important tasks, and undo actions.
+ */
 public class TodoListGUI extends Application {
 
-    private static TodoList todoList;
-    private ObservableList<Task> taskListObservable;
-    private ListView<Task> taskListView;
+    private static TodoList todoList; // The main todo list model for the application.
+    private ObservableList<Task> taskListObservable; // Observable list for JavaFX list view binding.
+    private ListView<Task> taskListView; // ListView for displaying tasks.
 
     @Override
     public void start(Stage primaryStage) {
@@ -67,7 +70,7 @@ public class TodoListGUI extends Application {
         mainLayout.setTop(topLayout);
         mainLayout.setCenter(taskListView);
 
-        taskListView.setCellFactory(lv -> new ListCell<>() {
+        taskListView.setCellFactory(lv -> new ListCell<Task>() {
             private final CheckBox checkBox = new CheckBox();
             private final Button optionsButton = new Button("...");
 
@@ -78,9 +81,9 @@ public class TodoListGUI extends Application {
                 setGraphic(null);
                 setStyle("");
                 if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
+                    // Clean up the cell if it is empty or the item is null
                 } else {
+                    // Populate the cell if it contains a Task item
                     checkBox.setText(item.getTaskName() + " - Due: " + item.getDueDateString());
                     checkBox.setSelected(item.isTaskCompleted());
                     checkBox.setOnAction(e -> {
@@ -95,20 +98,15 @@ public class TodoListGUI extends Application {
                         setStyle(""); // Clear any previous styling
                     }
 
-                    // Options button
                     optionsButton.setStyle("-fx-padding: 2px 5px;");
                     optionsButton.setOnAction(event -> {
-                        // Create context menu
                         ContextMenu contextMenu = new ContextMenu();
-
-                        // Delete option
                         MenuItem deleteItem = new MenuItem("Delete");
                         deleteItem.setOnAction(deleteEvent -> {
                             taskListObservable.remove(item);
                             todoList.removeTask(item.getTaskName());
                         });
 
-                        // Highlight option
                         MenuItem highlightItem = new MenuItem("Mark Important");
                         highlightItem.setOnAction(highlightEvent -> {
                             toggleHighlightCommand highlightCommand = new toggleHighlightCommand(item);
@@ -123,43 +121,36 @@ public class TodoListGUI extends Application {
                             dialog.setHeaderText("Enter new task name:");
                             Optional<String> result = dialog.showAndWait();
                             result.ifPresent(newName -> {
-                                // Create a ChangeNameCommand and execute it
                                 changeNameCommand changeNameCommand = new changeNameCommand(todoList, item, newName);
                                 todoList.performCommand(changeNameCommand);
                                 updateItem(item, empty); // Refresh cell appearance
                             });
                         });
+
                         MenuItem changeDateItem = new MenuItem("Change Date");
                         changeDateItem.setOnAction(changeDateEvent -> {
-                            // Show a dialog to enter a new due date
                             TextInputDialog dialog = new TextInputDialog(item.getDueDateString());
                             dialog.setTitle("Change Due Date");
                             dialog.setHeaderText("Enter new due date (YYYY-MM-DD), or leave blank to remove:");
                             Optional<String> result = dialog.showAndWait();
                             result.ifPresent(newDateString -> {
                                 LocalDate newDueDate = null;
-                                if (!newDateString.isEmpty()) {
-                                    try {
-                                        newDueDate = LocalDate.parse(newDateString);
-                                    } catch (DateTimeParseException e) {
-                                        System.err.println("Invalid date format.");
-                                    }
+                                try {
+                                    newDueDate = LocalDate.parse(newDateString);
+                                } catch (DateTimeParseException e) {
+                                    System.err.println("Invalid date format.");
+                                    return;
                                 }
-                                // Create a changeDateCommand and execute it
                                 changeDateCommand changeDateCommand = new changeDateCommand(todoList, item, newDueDate);
                                 todoList.performCommand(changeDateCommand);
-                                // Update the UI
-                                updateItem(item, empty);
+                                updateItem(item, empty); // Refresh cell appearance
                             });
                         });
 
-
-
-                        // Add items to context menu
-                        contextMenu.getItems().addAll(deleteItem, highlightItem, changeNameItem, changeDateItem);                        contextMenu.show(optionsButton, Side.BOTTOM, 0, 0);
+                        contextMenu.getItems().addAll(deleteItem, highlightItem, changeNameItem, changeDateItem);
+                        contextMenu.show(optionsButton, Side.BOTTOM, 0, 0);
                     });
 
-                    // Add checkbox and options button to HBox
                     HBox hbox = new HBox(checkBox, optionsButton);
                     hbox.setSpacing(5);
                     setGraphic(hbox);
@@ -172,10 +163,7 @@ public class TodoListGUI extends Application {
         primaryStage.setTitle("To-Do List");
         primaryStage.show();
 
-        primaryStage.setOnCloseRequest(event -> {
-            todoList.saveTodoList();
-        });
-
+        primaryStage.setOnCloseRequest(event -> todoList.saveTodoList());
     }
 
     private void sortByDueDate() {
@@ -194,11 +182,10 @@ public class TodoListGUI extends Application {
     }
 
     private void updateAndSortTaskList() {
-        PauseTransition pause = new PauseTransition(Duration.seconds(0.5)); // 0.5 seconds delay
+        PauseTransition pause = new PauseTransition(Duration.seconds(0.5)); // Introduce a small delay to ensure UI updates smoothly
         pause.setOnFinished(event -> {
             FXCollections.sort(taskListObservable, Comparator.comparing(Task::isTaskCompleted).thenComparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())));
-            taskListView.setItems(null);
-            taskListView.setItems(taskListObservable);
+            updateListView(); // Refresh the list view to display the sorted tasks
         });
         pause.play();
     }
@@ -227,10 +214,9 @@ public class TodoListGUI extends Application {
             }
 
             Task newTask = new Task(name, dueDate);
-            Command addTaskCommand = new addTaskCommand(todoList, newTask);
+            addTaskCommand addTaskCommand = new addTaskCommand(todoList, newTask);
             todoList.performCommand(addTaskCommand);
-            taskListObservable.add(newTask); //adding directly into observable list
-
+            taskListObservable.add(newTask); // Adding directly into observable list for immediate UI update
         });
     }
 

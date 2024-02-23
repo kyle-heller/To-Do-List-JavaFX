@@ -1,27 +1,39 @@
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Stack;
-import java.io.Serializable;
-import java.io.*;
 
+/**
+ * Represents a list of tasks, providing functionality to add, remove, and complete tasks.
+ * Also supports undoing the last command and persisting the list of tasks across sessions.
+ */
 public class TodoList implements Serializable {
-    private ArrayList<Task> taskList;
+    private static final long serialVersionUID = 1L; // Serialization version UID for compatibility.
 
-    // Constructor
+    private ArrayList<Task> taskList; // List of tasks in the todo list.
+    private Stack<Command> commandStack; // Stack of commands for undo functionality.
+
+    /**
+     * Constructs a new TodoList, initializing the list of tasks and loading any saved tasks.
+     */
     public TodoList() {
         taskList = new ArrayList<>();
-        loadTodoList();
+        commandStack = new Stack<>();
+        loadTodoList(); // Attempt to load tasks from a serialized file.
     }
 
-    // Action Methods
-    private Stack<Command> commandStack = new Stack<>();
-
-
+    /**
+     * Executes a command related to task management and pushes it onto the undo stack.
+     *
+     * @param command The command to be executed.
+     */
     public void performCommand(Command command) {
         command.execute();
         commandStack.push(command);
     }
 
-    // Method to undo the last command
+    /**
+     * Undoes the last action performed on the todo list, if possible.
+     */
     public void undoLastAction() {
         if (!commandStack.isEmpty()) {
             Command lastCommand = commandStack.pop();
@@ -29,24 +41,29 @@ public class TodoList implements Serializable {
         }
     }
 
-
-
+    /**
+     * Adds a new task to the todo list.
+     *
+     * @param newTask The task to be added.
+     */
     public void addTask(Task newTask) {
         taskList.add(newTask);
     }
 
+    /**
+     * Removes a task from the todo list by task name.
+     *
+     * @param taskName The name of the task to be removed.
+     */
     public void removeTask(String taskName) {
-        for (Task task : taskList) {
-            if (task.getTaskName().equals(taskName)) {
-                Command removeCommand = new removeTaskCommand(this, task);
-                removeCommand.execute();
-                commandStack.push(removeCommand);
-                break;
-            }
-        }
+        taskList.removeIf(task -> task.getTaskName().equals(taskName));
     }
 
-
+    /**
+     * Marks a task as completed by task name.
+     *
+     * @param taskName The name of the task to be marked as completed.
+     */
     public void completeTask(String taskName) {
         taskList.forEach(task -> {
             if (task.getTaskName().equals(taskName)) {
@@ -55,12 +72,15 @@ public class TodoList implements Serializable {
         });
     }
 
-    // Getter Methods
+    /**
+     * Retrieves the list of tasks.
+     *
+     * @return The list of tasks in the todo list.
+     */
     public ArrayList<Task> getTasks() {
         return taskList;
     }
 
-    // Utility Methods
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder();
@@ -70,15 +90,19 @@ public class TodoList implements Serializable {
         return result.toString();
     }
 
+    /**
+     * Changes the name of a specific task.
+     *
+     * @param task The task whose name is to be changed.
+     * @param newName The new name for the task.
+     */
     public void changeName(Task task, String newName) {
-        for (Task t : taskList) {
-            if (t.getTaskID() == task.getTaskID()) {
-                t.changeName(newName);
-                break;
-            }
-        }
+        task.changeName(newName);
     }
 
+    /**
+     * Saves the current list of tasks to a file using serialization.
+     */
     public void saveTodoList() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("todo_list.ser"))) {
             oos.writeObject(taskList);
@@ -88,7 +112,10 @@ public class TodoList implements Serializable {
         }
     }
 
-    public void loadTodoList() {
+    /**
+     * Loads the list of tasks from a file, if it exists, using deserialization.
+     */
+    private void loadTodoList() {
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("todo_list.ser"))) {
             taskList = (ArrayList<Task>) ois.readObject();
             System.out.println("Todo list loaded.");
@@ -97,8 +124,12 @@ public class TodoList implements Serializable {
         }
     }
 
-    // Main
+    /**
+     * The main method to start the application.
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
-        TodoListGUI.main(args);
+        TodoListGUI.main(args); // Delegate to the GUI class to start the application.
     }
 }
