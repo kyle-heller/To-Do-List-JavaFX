@@ -1,19 +1,21 @@
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.time.LocalDate;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-import java.util.Comparator;
 
-
-public class Task {
+public class Task implements Serializable {
     // Static Fields
     static int taskCount;
 
     // Instance Fields
     private int taskID;
     private String taskName;
-    private boolean importantHighlight;
     private LocalDate dueDate;
-    private BooleanProperty taskCompleted = new SimpleBooleanProperty(false);
+    private transient BooleanProperty taskCompleted;
+    private transient BooleanProperty importantHighlight;
 
     // Constructors
     public Task(String taskName) {
@@ -27,7 +29,10 @@ public class Task {
     public Task(String taskName, LocalDate dueDate, boolean importantHighlight) {
         this.taskName = taskName;
         this.dueDate = dueDate;
-        this.importantHighlight = importantHighlight;
+        this.taskCompleted = new SimpleBooleanProperty(false);
+        this.taskCompleted.addListener((obs, oldValue, newValue) -> {});
+        this.taskCompleted.set(false);
+        this.importantHighlight = new SimpleBooleanProperty(importantHighlight);
         this.taskID = assignTaskID();
     }
 
@@ -82,6 +87,42 @@ public class Task {
         return String.format("Task ID: %d, Name: %s, Status: %s, Due Date: %s", taskID, taskName, completedText, dueDateText);
     }
 
+    public void setImportantHighlight(boolean b) {
+        this.importantHighlight.set(b);
+    }
+
+    public void toggleImportantHighlight() {
+        setImportantHighlight(!isImportantHighlight());
+    }
+
+    public boolean isImportantHighlight() {
+        return this.importantHighlight.get();
+    }
+
+    // Custom serialization methods
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+        out.writeBoolean(taskCompleted.get());
+        out.writeBoolean(importantHighlight.get()); // Correctly writing the boolean value
+    }
+
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        taskCompleted = new SimpleBooleanProperty(in.readBoolean());
+
+        // Re-initializing importantHighlight property correctly
+        boolean importantHighlightValue = in.readBoolean();
+        importantHighlight = new SimpleBooleanProperty(importantHighlightValue);
+    }
+
+
     //To Organize
 
+    public void changeName(String newName) {
+        setTaskName(newName);
+    }
+
+    public void changeDate(LocalDate newDate) {
+        this.dueDate = newDate;
+    }
 }

@@ -1,6 +1,7 @@
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Side;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
@@ -18,15 +19,15 @@ import javafx.util.Duration;
 
 public class TodoListGUI extends Application {
 
-    private TodoList todoList;
+    private static TodoList todoList;
     private ObservableList<Task> taskListObservable;
-    private ListView<Task> taskListView; // Moved to be a class member
+    private ListView<Task> taskListView;
 
     @Override
     public void start(Stage primaryStage) {
         todoList = new TodoList();
         taskListObservable = FXCollections.observableArrayList(todoList.getTasks());
-        taskListView = new ListView<>(taskListObservable); // Initialization moved here
+        taskListView = new ListView<>(taskListObservable);
 
         Label titleLabel = new Label(" To-Do List");
         titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 20px;");
@@ -36,20 +37,20 @@ public class TodoListGUI extends Application {
 
         Button undoButton = new Button("Undo");
         undoButton.setOnAction(event -> {
-            // Placeholder for undo logic
-            System.out.println("Undo action triggered");
+            todoList.undoLastAction();
+            taskListObservable.setAll(todoList.getTasks());
         });
 
         ComboBox<String> sortOptions = new ComboBox<>();
-        sortOptions.getItems().addAll("Sort by Due Date", "Sort by Latest Added");
-        sortOptions.setValue("Sort by Latest Added"); // Default sorting option
+        sortOptions.getItems().addAll("Sort by Due Date", "Sort by Date Added");
+        sortOptions.setValue("Sort by Date Added"); // Default sorting option
 
         sortOptions.getSelectionModel().selectedItemProperty().addListener((options, oldValue, newValue) -> {
             switch (newValue) {
                 case "Sort by Due Date":
                     sortByDueDate();
                     break;
-                case "Sort by Latest Added":
+                case "Sort by Date Added":
                     sortByLatestAdded();
                     break;
             }
@@ -68,6 +69,7 @@ public class TodoListGUI extends Application {
 
         taskListView.setCellFactory(lv -> new ListCell<>() {
             private final CheckBox checkBox = new CheckBox();
+            private final Button optionsButton = new Button("...");
 
             @Override
             public void updateItem(Task item, boolean empty) {
@@ -83,7 +85,81 @@ public class TodoListGUI extends Application {
                         updateAndSortTaskList(); // Sort and update list when a task's completion status changes
                     });
                     setTextFill(item.isTaskCompleted() ? Color.GRAY : Color.BLACK); // Grey out if completed
-                    setGraphic(checkBox);
+
+                    if (item.isImportantHighlight()) {
+                        setStyle("-fx-background-color: #FFD700;"); // Set background color to yellow for important tasks
+                    } else {
+                        setStyle(""); // Clear any previous styling
+                    }
+
+                    // Options button
+                    optionsButton.setStyle("-fx-padding: 2px 5px;");
+                    optionsButton.setOnAction(event -> {
+                        // Create context menu
+                        ContextMenu contextMenu = new ContextMenu();
+
+                        // Delete option
+                        MenuItem deleteItem = new MenuItem("Delete");
+                        deleteItem.setOnAction(deleteEvent -> {
+                            taskListObservable.remove(item);
+                            todoList.removeTask(item.getTaskName());
+                        });
+
+                        // Highlight option
+                        MenuItem highlightItem = new MenuItem("Mark Important");
+                        highlightItem.setOnAction(highlightEvent -> {
+                            toggleHighlightCommand highlightCommand = new toggleHighlightCommand(item);
+                            todoList.performCommand(highlightCommand);
+                            updateItem(item, empty); // Refresh cell appearance
+                        });
+
+                        MenuItem changeNameItem = new MenuItem("Change Name");
+                        changeNameItem.setOnAction(changeNameEvent -> {
+                            TextInputDialog dialog = new TextInputDialog(item.getTaskName());
+                            dialog.setTitle("Change Task Name");
+                            dialog.setHeaderText("Enter new task name:");
+                            Optional<String> result = dialog.showAndWait();
+                            result.ifPresent(newName -> {
+                                // Create a ChangeNameCommand and execute it
+                                changeNameCommand changeNameCommand = new changeNameCommand(todoList, item, newName);
+                                todoList.performCommand(changeNameCommand);
+                                updateItem(item, empty); // Refresh cell appearance
+                            });
+                        });
+                        MenuItem changeDateItem = new MenuItem("Change Date");
+                        changeDateItem.setOnAction(changeDateEvent -> {
+                            // Show a dialog to enter a new due date
+                            TextInputDialog dialog = new TextInputDialog(item.getDueDateString());
+                            dialog.setTitle("Change Due Date");
+                            dialog.setHeaderText("Enter new due date (YYYY-MM-DD), or leave blank to remove:");
+                            Optional<String> result = dialog.showAndWait();
+                            result.ifPresent(newDateString -> {
+                                LocalDate newDueDate = null;
+                                if (!newDateString.isEmpty()) {
+                                    try {
+                                        newDueDate = LocalDate.parse(newDateString);
+                                    } catch (DateTimeParseException e) {
+                                        System.err.println("Invalid date format.");
+                                    }
+                                }
+                                // Create a changeDateCommand and execute it
+                                changeDateCommand changeDateCommand = new changeDateCommand(todoList, item, newDueDate);
+                                todoList.performCommand(changeDateCommand);
+                                // Update the UI
+                                updateItem(item, empty);
+                            });
+                        });
+
+
+
+                        // Add items to context menu
+                        contextMenu.getItems().addAll(deleteItem, highlightItem, changeNameItem, changeDateItem);                        contextMenu.show(optionsButton, Side.BOTTOM, 0, 0);
+                    });
+
+                    // Add checkbox and options button to HBox
+                    HBox hbox = new HBox(checkBox, optionsButton);
+                    hbox.setSpacing(5);
+                    setGraphic(hbox);
                 }
             }
         });
@@ -92,10 +168,20 @@ public class TodoListGUI extends Application {
         primaryStage.setScene(scene);
         primaryStage.setTitle("To-Do List");
         primaryStage.show();
+
+        primaryStage.setOnCloseRequest(event -> {
+            todoList.saveTodoList();
+        });
+
     }
 
     private void sortByDueDate() {
         FXCollections.sort(taskListObservable, Comparator.comparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())));
+        updateListView();
+    }
+
+    private void sortByLatestAdded() {
+        FXCollections.sort(taskListObservable, Comparator.comparingInt(Task::getTaskID));
         updateListView();
     }
 
@@ -104,19 +190,14 @@ public class TodoListGUI extends Application {
         taskListView.setItems(taskListObservable); // Re-set the sorted items
     }
 
-    private void sortByLatestAdded() {
-        FXCollections.sort(taskListObservable, Comparator.comparingInt(Task::getTaskID));
-        updateListView();
-    }
-
     private void updateAndSortTaskList() {
         PauseTransition pause = new PauseTransition(Duration.seconds(0.5)); // 0.5 seconds delay
         pause.setOnFinished(event -> {
             FXCollections.sort(taskListObservable, Comparator.comparing(Task::isTaskCompleted).thenComparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())));
-            taskListView.setItems(null); // Force the ListView to update
-            taskListView.setItems(taskListObservable); // Re-set the sorted items
+            taskListView.setItems(null);
+            taskListView.setItems(taskListObservable);
         });
-        pause.play(); // Start the pause
+        pause.play();
     }
 
     private void showAddTaskDialog() {
@@ -143,10 +224,15 @@ public class TodoListGUI extends Application {
             }
 
             Task newTask = new Task(name, dueDate);
-            todoList.addTask(newTask);
-            taskListObservable.add(newTask); // Directly add to observable list
-            updateAndSortTaskList(); // Sort and update list after adding a task
+            Command addTaskCommand = new addTaskCommand(todoList, newTask);
+            todoList.performCommand(addTaskCommand);
+            taskListObservable.add(newTask); //adding directly into observable list
+
         });
+    }
+
+    public static void setTodoList(TodoList todoList) {
+        TodoListGUI.todoList = todoList;
     }
 
     public static void main(String[] args) {
