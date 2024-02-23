@@ -74,6 +74,9 @@ public class TodoListGUI extends Application {
             @Override
             public void updateItem(Task item, boolean empty) {
                 super.updateItem(item, empty);
+                setText(null);
+                setGraphic(null);
+                setStyle("");
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
